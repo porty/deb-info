@@ -198,23 +198,27 @@ func readData(ar *ArReader) error {
 		if err != nil {
 			return fmt.Errorf("failed to read file from data archive: %w", err)
 		}
-		//f.FileInfo()
-		//mode := os.FileMode(f.Mode)
-		fi := f.FileInfo()
+
 		mimeStr := ""
-		if fi.IsDir() {
-			mimeStr = "<DIR>"
-		} else if mime, _ := mimetype.DetectReader(tr); mime != nil {
-			mimeStr = mime.String()
-		}
-
-		if fi.IsDir() {
+		switch f.Typeflag {
+		case tar.TypeDir:
 			dirCount++
-		} else {
+			mimeStr = "<DIR>"
+		case tar.TypeSymlink, tar.TypeLink:
+			mimeStr = "-> " + f.Linkname
+		case tar.TypeReg:
 			fileCount++
-			totalFileSize += fi.Size()
+			totalFileSize += f.Size
+			if mime, _ := mimetype.DetectReader(tr); mime != nil {
+				mimeStr = mime.String()
+			} else {
+				mimeStr = "(unknown)"
+			}
+		default:
+			mimeStr = "(not handled)"
 		}
 
+		fi := f.FileInfo()
 		fmt.Printf("%-100s %-13s %13s %-20s\n", f.Name, fi.Mode().String(), strconv.Itoa(int(f.Size)), mimeStr)
 	}
 
