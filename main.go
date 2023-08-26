@@ -69,33 +69,6 @@ func errmain() error {
 		return fmt.Errorf("failed to read data file: %w", err)
 	}
 
-	// for {
-	// 	fi, err := ar.ReadFile()
-	// 	if err == io.EOF {
-	// 		break
-	// 	}
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	fmt.Printf("File: %q, size %d\n", fi.Name, fi.Size)
-
-	// 	if fi.Name == "debian-binary" {
-	// 		buf.Reset()
-	// 		read, err := io.Copy(&buf, fi.Reader)
-	// 		if err != nil {
-	// 			return fmt.Errorf("failed to read debian-binary: %w", err)
-	// 		}
-	// 		if read != 4 {
-	// 			return fmt.Errorf("failed to read debian-binary: expected %d bytes, read %d bytes", 4, read)
-	// 		}
-	// 		if buf.String() != "2.0\n" {
-	// 			return errors.New("invalid debian-binary value")
-	// 		}
-	// 		fmt.Println("hell yeah debian-binary looks good")
-	// 	}
-	// }
-
 	return nil
 }
 
@@ -172,6 +145,7 @@ func readData(ar *ArReader) error {
 	if err != nil {
 		return err
 	}
+	// TODO: handle data.tar.bz
 	const controlTarGz = "data.tar.gz"
 	if fi.Name != controlTarGz {
 		return fmt.Errorf("expected file %q, got %q", controlTarGz, fi.Name)
