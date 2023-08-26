@@ -14,6 +14,7 @@ import (
 type ArReader struct {
 	r              io.Reader
 	lastFileReader io.Reader
+	skipByte       bool
 }
 
 type FileInfo struct {
@@ -41,6 +42,14 @@ func (a *ArReader) ReadFile() (*FileInfo, error) {
 			return nil, err
 		}
 		a.lastFileReader = nil
+	}
+	if a.skipByte {
+		b := make([]byte, 1)
+		if bytesRead, err := a.r.Read(b); err != nil {
+			return nil, fmt.Errorf("failed to skip to even byte alignment: %w", err)
+		} else if bytesRead != 1 {
+			return nil, fmt.Errorf("failed to skip to even byte alignment: empty read")
+		}
 	}
 
 	// filename: 16
@@ -100,6 +109,9 @@ func (a *ArReader) ReadFile() (*FileInfo, error) {
 
 	fi.Reader = io.LimitReader(a.r, fi.Size)
 	a.lastFileReader = fi.Reader
+
+	// file records start on even bytes only, so when reading the next file we need to skip one byte
+	a.skipByte = fi.Size&1 == 1
 
 	return &fi, nil
 }
