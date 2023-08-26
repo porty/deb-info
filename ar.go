@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -103,8 +102,8 @@ func (a *ArReader) ReadFile() (*FileInfo, error) {
 		return nil, fmt.Errorf("failed to read file size: %w", err)
 	}
 
-	if bytes.Compare(fileHeader.Bytes()[58:58+2], []byte{0x60, 0x0a}) != 0 {
-		return nil, errors.New("invalid file info trailer")
+	if !bytes.Equal(fileHeader.Bytes()[58:58+2], []byte{0x60, 0x0a}) {
+		return nil, fmt.Errorf("invalid file info trailer for %q (got %x)", fi.Name, fileHeader.Bytes()[58:58+2])
 	}
 
 	fi.Reader = io.LimitReader(a.r, fi.Size)

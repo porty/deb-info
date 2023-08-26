@@ -45,7 +45,7 @@ func errmain() error {
 	if err != nil {
 		return fmt.Errorf("failed to read Debian package header: %w", err)
 	}
-	if bytes.Compare(buf.Bytes(), []byte(signature)) != 0 {
+	if !bytes.Equal(buf.Bytes(), []byte(signature)) {
 		return errors.New("bad Debian package signature")
 	}
 
