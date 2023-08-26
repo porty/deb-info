@@ -8,8 +8,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gabriel-vasile/mimetype"
 )
@@ -31,6 +35,28 @@ func errmain() error {
 
 	if filename == "" {
 		r = os.Stdin
+	} else if strings.HasPrefix(filename, "http://") || strings.HasPrefix(filename, "https://") {
+		c := &http.Client{
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   5 * time.Second,
+					KeepAlive: 5 * time.Second,
+				}).Dial,
+				TLSHandshakeTimeout:   5 * time.Second,
+				ResponseHeaderTimeout: 5 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+				Proxy:                 http.ProxyFromEnvironment,
+			},
+		}
+		resp, err := c.Get(filename)
+		if err != nil {
+			return fmt.Errorf("http request failed for package: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("unexpected HTTP status for package: %s", resp.Status)
+		}
+		r = resp.Body
 	} else {
 		f, err := os.Open(filename)
 		if err != nil {
