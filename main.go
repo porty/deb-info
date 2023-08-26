@@ -135,7 +135,7 @@ func readControl(ar *ArReader) (string, error) {
 	if fi.Name != controlTarGz {
 		return "", fmt.Errorf("expected file %q, got %q", controlTarGz, fi.Name)
 	}
-	if fi.Size > 10*1024 {
+	if fi.Size > 100*1024 {
 		return "", fmt.Errorf("control archive seems to large at %d bytes", fi.Size)
 	}
 
