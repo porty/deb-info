@@ -1,4 +1,4 @@
-package main
+package ar
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type ArReader struct {
+type Reader struct {
 	r              io.Reader
 	lastFileReader io.Reader
 	skipByte       bool
@@ -27,13 +27,13 @@ type FileInfo struct {
 	Reader io.Reader
 }
 
-func NewArReader(r io.Reader) *ArReader {
-	return &ArReader{
+func NewReader(r io.Reader) *Reader {
+	return &Reader{
 		r: r,
 	}
 }
 
-func (a *ArReader) ReadFile() (*FileInfo, error) {
+func (a *Reader) ReadFile() (*FileInfo, error) {
 	// scan to the end of the previous file, if any
 	if a.lastFileReader != nil {
 		_, err := io.Copy(io.Discard, a.lastFileReader)
