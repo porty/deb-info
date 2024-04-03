@@ -3,6 +3,7 @@ package main
 import (
 	"archive/tar"
 	"bytes"
+	"compress/bzip2"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/ulikunitz/xz"
 
 	"github.com/porty/deb-info/ar"
 )
@@ -185,21 +187,34 @@ func readControl(ar *ar.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	const controlTarGz = "control.tar.gz"
-	if fi.Name != controlTarGz {
-		return "", fmt.Errorf("expected file %q, got %q", controlTarGz, fi.Name)
-	}
+
 	if fi.Size > 100*1024 {
 		return "", fmt.Errorf("control archive seems to large at %d bytes", fi.Size)
 	}
 
-	gr, err := gzip.NewReader(fi.Reader)
-	if err != nil {
-		return "", fmt.Errorf("failed to initialize gzip reader: %w", err)
-	}
-	gr.Close()
+	var r io.Reader
 
-	tr := tar.NewReader(gr)
+	switch fi.Name {
+	case "control.tar.gz":
+		gr, err := gzip.NewReader(fi.Reader)
+		if err != nil {
+			return "", fmt.Errorf("failed to initialize gzip reader: %w", err)
+		}
+		defer gr.Close()
+		r = gr
+	case "control.tar.xz":
+		xzr, err := xz.NewReader(fi.Reader)
+		if err != nil {
+			return "", fmt.Errorf("failed to initialize xz reader: %w", err)
+		}
+		r = xzr
+	case "control.tar.bz":
+		r = bzip2.NewReader(fi.Reader)
+	default:
+		return "", fmt.Errorf("unknown/unhandled control file extension: %s", fi.Name)
+	}
+
+	tr := tar.NewReader(r)
 	for {
 		tarFile, err := tr.Next()
 		if err == io.EOF {
@@ -261,17 +276,28 @@ func readDataToStdout(ar *ar.Reader) error {
 	if err != nil {
 		return err
 	}
-	// TODO: handle data.tar.bz
-	const controlTarGz = "data.tar.gz"
-	if fi.Name != controlTarGz {
-		return fmt.Errorf("expected file %q, got %q", controlTarGz, fi.Name)
-	}
 
-	gr, err := gzip.NewReader(fi.Reader)
-	if err != nil {
-		return fmt.Errorf("failed to initialize gzip reader: %w", err)
+	var r io.Reader
+
+	switch fi.Name {
+	case "data.tar.gz":
+		gr, err := gzip.NewReader(fi.Reader)
+		if err != nil {
+			return fmt.Errorf("failed to initialize gzip reader: %w", err)
+		}
+		defer gr.Close()
+		r = gr
+	case "data.tar.xz":
+		xzr, err := xz.NewReader(fi.Reader)
+		if err != nil {
+			return fmt.Errorf("failed to initialize xz reader: %w", err)
+		}
+		r = xzr
+	case "data.tar.bz":
+		r = bzip2.NewReader(fi.Reader)
+	default:
+		return fmt.Errorf("unknown/unhandled data file extension: %s", fi.Name)
 	}
-	gr.Close()
 
 	w := tabwriter.NewWriter(os.Stdout, 10, 2, 4, ' ', 0)
 	w.Write([]byte("Name\tMode\tSize\tMIME\n"))
@@ -280,7 +306,7 @@ func readDataToStdout(ar *ar.Reader) error {
 	dirCount := 0
 	totalFileSize := int64(0)
 
-	tr := tar.NewReader(gr)
+	tr := tar.NewReader(r)
 	for {
 		f, err := tr.Next()
 		if err == io.EOF {
